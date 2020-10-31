@@ -9,3 +9,5 @@ at.set_once_monthly - Sets the current "monthly changed" channel by name
 at.set_once_hourly - same as at.set_once_monthly, except for the hourly channel
 
 at.manual_data_write - writes the `status` object to `data/status.bin` manually.
+
+at.init_time_loop - Enable checking the time every ten minutes to update channel names.
