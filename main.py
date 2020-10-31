@@ -82,7 +82,7 @@ async def manual_data_write(ctx):
 
 @bot.command()
 async def info(ctx, page):
-    if page in man_entries
+    if page in man_entries:
         emb = discord.Embed()
         emb.title = f"Help: {page}"
         emb.description = man_entries[page]
