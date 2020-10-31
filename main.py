@@ -82,12 +82,13 @@ async def manual_data_write(ctx):
 
 @bot.command()
 async def info(ctx, page):
-    if os.path.isfile(f"static/man/{page}"):
-        with open(f"static/man/{page}", "r") as f:
-            emb = discord.Embed()
-            emb.title = f"Help: {page}"
-            emb.description = f.read()
-            emb.colour = discord.Colour.blue()
+    if page in man_entries
+        emb = discord.Embed()
+        emb.title = f"Help: {page}"
+        emb.description = man_entries[page]
+        emb.colour = discord.Colour.blue()
+    else:
+        ctx.send(f"Error: {page} is not a known info page")
 
 @tasks.loop(minutes=10.0)
 async def check_time():
@@ -131,7 +132,7 @@ def main():
         m_names = m_names.strip(" ")
         m_names = m_names.split("\n")
     for i in os.listdir("static/man"):
-        with open(f"static/man/{i}", r) as f:
+        with open(f"static/man/{i}", "r") as f:
             man_entries[i] = f.read()
     with open("static/secret", "r") as f:
         bot.run(f.read().strip())
