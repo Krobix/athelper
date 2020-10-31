@@ -81,7 +81,7 @@ async def manual_data_write(ctx):
     await ctx.send("OK")
 
 @bot.command()
-async def help(ctx, page):
+async def info(ctx, page):
     if os.path.isfile(f"static/man/{page}"):
         with open(f"static/man/{page}", "r") as f:
             emb = discord.Embed()
