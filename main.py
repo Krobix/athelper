@@ -87,6 +87,7 @@ async def info(ctx, page):
         emb.title = f"Help: {page}"
         emb.description = man_entries[page]
         emb.colour = discord.Colour.blue()
+        ctx.send(embed=emb)
     else:
         ctx.send(f"Error: {page} is not a known info page")
 
