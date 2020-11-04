@@ -241,7 +241,7 @@ async def send_modmail(subject, category, user):
     modmail_table.add_entry(str(user.id), subject, category)
     modmail_table.commit()
     chan = await mm_channel_category.create_text_channel(name=str(mm_id))
-    await chan.send("placeholder modmail message")
+    await chan.send(f"Modmail opened: this modmail was opened by {user.mention}. The category is {category}, and the subject line is:\n{subject}\n\n{mod_role.mention}")
     await chan.set_permissions(user, read_messages=True, send_messages=True)
 
 def main():
