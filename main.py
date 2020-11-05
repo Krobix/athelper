@@ -217,6 +217,15 @@ async def modmail(ctx, category, subject):
     await send_modmail(subject, category, ctx.author)
     await ctx.send("Sent.")
 
+@bot.command()
+async def modmail_info(ctx, num: int):
+    if mod_role in ctx.author.roles:
+        emb = discord.Embed()
+        emb.title = f"Modmail ticket with ID {num}"
+        emb.add_field(name="Category", value="") #TODO: Finish this
+    else:
+        await ctx.send("Only staff members can use this command")
+
 @tasks.loop(minutes=10)
 async def time_check_loop():
     global now
@@ -241,7 +250,7 @@ async def send_modmail(subject, category, user):
     modmail_table.add_entry(str(user.id), subject, category)
     modmail_table.commit()
     chan = await mm_channel_category.create_text_channel(name=str(mm_id))
-    await chan.send(f"Modmail opened: this modmail was opened by {user.mention}. The category is {category}, and the subject line is:\n{subject}\n\n{mod_role.mention}")
+    await chan.send(f"Modmail opened: this modmail (ID #{chan.name}) was opened by {user.mention}. The category is {category}, and the subject line is:\n\n\"{subject}\"\n\n{mod_role.mention}")
     await chan.set_permissions(user, read_messages=True, send_messages=True)
 
 def main():
