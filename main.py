@@ -119,7 +119,7 @@ def setup_tables():
     config_table.add_entry("at_guild_id", "None")
     config_table.commit()
     #Modmail table
-    modmail_table = ATHelperTable("data/modmail.table", ["opener_id", "subject", "category"])
+    modmail_table = ATHelperTable("data/modmail.table", ["opener_id", "subject", "category", "channel_id"])
     modmail_table.commit()
 
 def get_config(key):
@@ -220,11 +220,36 @@ async def modmail(ctx, category, subject):
 @bot.command()
 async def modmail_info(ctx, num: int):
     if mod_role in ctx.author.roles:
-        emb = discord.Embed()
-        emb.title = f"Modmail ticket with ID {num}"
-        emb.add_field(name="Category", value="") #TODO: Finish this
+        try:
+            mm_entry = modmail_table.get_raw_entry_from_id(num)
+            mm_map = mm_entry.field_map
+        except KeyError:
+            await ctx.send("Error: that modmail ticket does not exist")
+        else:
+            emb = discord.Embed()
+            emb.title = f"Modmail ticket with ID {num}"
+            emb.color = discord.Color.dark_magenta()
+            emb.add_field(name="Category", value=mm_map["category"])
+            emb.add_field(name="Subject", value=mm_map["subject"])
+            emb.add_field(name="User", value=bot.get_user(int(mm_map["opener_id"])))
+            await ctx.send(embed=emb)
     else:
         await ctx.send("Only staff members can use this command")
+
+@bot.command()
+async def modmail_close(ctx, num: int):
+    if mod_role in ctx.author.roles:
+        try:
+            mm_entry = modmail_table.get_raw_entry_from_id(num)
+        except KeyError:
+            await ctx.send("Error: a modmail ticket by that id does not exist")
+        else:
+            chan = bot.get_channel(int(mm_entry.field_map["channel_id"]))
+            chan.delete()
+            modmail_table.remove_entry(mm_entry.id)
+            await ctx.send("OK!")
+    else:
+        await ctx.send("You must be a staff member to use this command.")
 
 @tasks.loop(minutes=10)
 async def time_check_loop():
@@ -247,11 +272,11 @@ async def on_ready():
 
 async def send_modmail(subject, category, user):
     mm_id = modmail_table.len_entries
-    modmail_table.add_entry(str(user.id), subject, category)
-    modmail_table.commit()
     chan = await mm_channel_category.create_text_channel(name=str(mm_id))
     await chan.send(f"Modmail opened: this modmail (ID #{chan.name}) was opened by {user.mention}. The category is {category}, and the subject line is:\n\n\"{subject}\"\n\n{mod_role.mention}")
     await chan.set_permissions(user, read_messages=True, send_messages=True)
+    modmail_table.add_entry(str(user.id), subject, category, str(chan.id))
+    modmail_table.commit()
 
 def main():
     global testing_mode, man_entries
