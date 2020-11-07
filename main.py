@@ -71,7 +71,7 @@ class ATHelperTable:
                 cmap["id"] = i.id
                 return cmap
         else:
-            return None
+            raise KeyError(f"value {search_value} for {field} not found in table")
 
     def get_raw_entry_from_id(self, id):
         for i in self.entries:
@@ -245,11 +245,20 @@ async def modmail_close(ctx, num: int):
             await ctx.send("Error: a modmail ticket by that id does not exist")
         else:
             chan = bot.get_channel(int(mm_entry.field_map["channel_id"]))
-            chan.delete()
+            await chan.delete()
             modmail_table.remove_entry(mm_entry.id)
             await ctx.send("OK!")
     else:
         await ctx.send("You must be a staff member to use this command.")
+
+@bot.command()
+async def testing_disable_mod_check(ctx):
+    global mod_role
+    if testing_mode:
+        mod_role = ctx.author.roles[0]
+        await ctx.send("OK")
+    else:
+        pass
 
 @tasks.loop(minutes=10)
 async def time_check_loop():
