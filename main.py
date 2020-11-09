@@ -45,6 +45,8 @@ day_loop_num = 0
 
 m_index = 0
 
+m_changed = False
+
 class ATHelperTableEntry:
     def __init__(self, id, field_values, table):
         self.id = id
@@ -108,10 +110,13 @@ def try_mkdir(dir):
         os.mkdir(dir)
 
 def add_days(amount):
-    global day_loop_num
+    global day_loop_num, m_changed
     tmpnum = day_loop_num + amount
     if tmpnum > 35:
         day_loop_num = tmpnum - 35
+        m_changed = True
+    else:
+        day_loop_num = tmpnum
 
 def inc_m_index():
     global m_index
@@ -177,7 +182,7 @@ def init_already_installed():
         day_loop_obj = pickle.load(f)
         ndln = datetime.datetime.now()
         diff = ndln - day_loop_obj
-        add_days(diff.day)
+        add_days(diff.days)
 
 
 @bot.command()
@@ -299,16 +304,23 @@ async def testing_disable_mod_check(ctx):
     else:
         pass
 
+@bot.command()
+async def inc_day_c(ctx, amount: int):
+    if testing_mode:
+        await testing_inc_day(amount)
+
 @tasks.loop(minutes=10)
 async def time_check_loop():
-    global now
+    global now, m_changed
     new_now = datetime.datetime.now()
     if new_now.hour != now.hour:
         await once_hourly_channel.edit(name=h_channel_names[new_now.hour])
     if new_now.day != day_loop_obj.day:
         add_days(1)
-        if day_loop_num == 0:
+        if m_changed:
+            m_changed = False
             await once_monthly_channel.edit(name=m_channel_names[m_index])
+            inc_m_index()
     now = new_now
 
 @bot.event
@@ -321,10 +333,13 @@ async def on_ready():
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
     time_check_loop.start()
 
-async def testing_inc_day():
-    add_days(1)
-    if day_loop_num == 0:
+async def testing_inc_day(amount):
+    global m_changed
+    add_days(amount)
+    if m_changed:
+        m_changed = False
         await once_monthly_channel.edit(name=m_channel_names[m_index])
+        inc_m_index()
 
 async def send_modmail(subject, category, user):
     mm_id = modmail_table.len_entries
