@@ -39,6 +39,12 @@ now = datetime.datetime.now()
 
 man_entries = {}
 
+day_loop_obj = None
+
+day_loop_num = 0
+
+m_index = 0
+
 class ATHelperTableEntry:
     def __init__(self, id, field_values, table):
         self.id = id
@@ -101,6 +107,18 @@ def try_mkdir(dir):
     if not os.path.isdir(dir):
         os.mkdir(dir)
 
+def add_days(amount):
+    global day_loop_num
+    tmpnum = day_loop_num + amount
+    if tmpnum > 35:
+        day_loop_num = tmpnum - 35
+
+def inc_m_index():
+    global m_index
+    m_index += 1
+    if m_index > 10:
+        m_index = 0
+
 def setup_directories():
     try_mkdir("data")
     try_mkdir("data/chr")
@@ -132,14 +150,35 @@ def set_config(key, val):
     config_table.edit_entry(id, "value", val)
     config_table.commit()
 
+def setup_days():
+    global day_loop_obj
+    day_loop_obj = datetime.datetime.now()
+    with open("data/dln.bin", "wb") as f:
+        pickle.dump(day_loop_obj, f)
+    with open("data/dlnn.bin", "wb") as f:
+        pickle.dump(day_loop_num, f)
+    with open("data/mind.bin", "wb") as f:
+        pickle.dump(m_index, f)
+
 def full_setup():
     setup_directories()
     setup_tables()
+    setup_days()
 
 def init_already_installed():
-    global config_table, modmail_table
+    global config_table, modmail_table, day_loop_obj, day_loop_num, m_index
     config_table = load_table("data/config.table")
     modmail_table = load_table("data/modmail.table")
+    with open("data/dlnn.bin", "rb") as f:
+        add_days(pickle.load(f))
+    with open("data/mind.bin", "rb") as f:
+        m_index = pickle.load(f)
+    with open("data/dln.bin", "rb") as f:
+        day_loop_obj = pickle.load(f)
+        ndln = datetime.datetime.now()
+        diff = ndln - day_loop_obj
+        add_days(diff.day)
+
 
 @bot.command()
 async def set_once_monthly(ctx, ch_id):
@@ -265,8 +304,11 @@ async def time_check_loop():
     global now
     new_now = datetime.datetime.now()
     if new_now.hour != now.hour:
-        await once_monthly_channel.edit(name=m_channel_names[new_now.month])
         await once_hourly_channel.edit(name=h_channel_names[new_now.hour])
+    if new_now.day != day_loop_obj.day:
+        add_days(1)
+        if day_loop_num == 0:
+            await once_monthly_channel.edit(name=m_channel_names[m_index])
     now = new_now
 
 @bot.event
@@ -278,6 +320,11 @@ async def on_ready():
     at_guild = bot.get_guild(int(get_config("at_guild_id")))
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
     time_check_loop.start()
+
+async def testing_inc_day():
+    add_days(1)
+    if day_loop_num == 0:
+        await once_monthly_channel.edit(name=m_channel_names[m_index])
 
 async def send_modmail(subject, category, user):
     mm_id = modmail_table.len_entries
@@ -313,4 +360,5 @@ def main():
     with open("static/secret", "r") as f:
         bot.run(f.read().strip())
 
-main()
+if __name__ == "__main__":
+    main()
