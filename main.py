@@ -11,6 +11,8 @@ import datetime
 
 bot = commands.Bot(command_prefix="at.")
 
+bot.remove_command("help")
+
 config_table = None #data/config.table
 
 modmail_table = None #data/modmail.table
@@ -155,15 +157,18 @@ def set_config(key, val):
     config_table.edit_entry(id, "value", val)
     config_table.commit()
 
-def setup_days():
-    global day_loop_obj
-    day_loop_obj = datetime.datetime.now()
+def dump_days():
     with open("data/dln.bin", "wb") as f:
         pickle.dump(day_loop_obj, f)
     with open("data/dlnn.bin", "wb") as f:
         pickle.dump(day_loop_num, f)
     with open("data/mind.bin", "wb") as f:
         pickle.dump(m_index, f)
+
+def setup_days():
+    global day_loop_obj
+    day_loop_obj = datetime.datetime.now()
+    dump_days()
 
 def full_setup():
     setup_directories()
@@ -246,7 +251,7 @@ async def ateval(ctx, expr):
         pass
 
 @bot.command()
-async def info(ctx, page):
+async def help(ctx, page):
     emb = discord.Embed()
     emb.title = f"Info: {page}"
     try:
@@ -319,8 +324,9 @@ async def time_check_loop():
         add_days(1)
         if m_changed:
             m_changed = False
-            await once_monthly_channel.edit(name=m_channel_names[m_index])
+            await once_monthly_channel.edit(name=f"{day_loop_num} {m_channel_names[m_index]}")
             inc_m_index()
+        dump_days()
     now = new_now
 
 @bot.event
@@ -338,7 +344,7 @@ async def testing_inc_day(amount):
     add_days(amount)
     if m_changed:
         m_changed = False
-        await once_monthly_channel.edit(name=m_channel_names[m_index])
+        await once_monthly_channel.edit(name=f"{day_loop_num} {m_channel_names[m_index]}")
         inc_m_index()
 
 async def send_modmail(subject, category, user):
