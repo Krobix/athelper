@@ -8,6 +8,7 @@ import pickle
 import copy
 import sys
 import datetime
+import secrets
 
 bot = commands.Bot(command_prefix="at.")
 
@@ -48,6 +49,8 @@ day_loop_num = 0
 m_index = 0
 
 m_changed = False
+
+chr_unapproved_list = []
 
 class ATHelperTableEntry:
     def __init__(self, id, field_values, table):
@@ -103,7 +106,36 @@ class ATHelperTable:
         with open(self.path, "wb") as f:
             pickle.dump(self, f)
 
-def load_table(path):
+class ATCharacter:
+    def __init__(self, name, sheet):
+        self.name = name
+        self.sheet = sheet
+        self.id = secrets.token_hex(10)
+        self.path = f"data/chr/obj/{self.id}"
+        self.currency_amount = 0
+        self.products_owned = []
+        self.approved_bio = False
+        self.approved_stats = False
+
+    async def commit(self):
+        with open(self.path, "wb") as f:
+            pickle.dump(self, f)
+
+    async def submit(self):
+        chr_unapproved_list.append(self.id) 
+        await self.commit()
+        with open("data/chr/tables/unapproved.list", "wb") as f:
+            pickle.dump(chr_unapproved_list, f)
+    
+    async def approve(self, which):
+        if which == "bio":
+            self.approved_bio = True
+        elif which == "stats":
+            self.approved_stats = True
+        if (self.approved_bio) and (self.approved_stats):
+            chr_unnaproved_list.remove(self.id)
+
+def load_obj(path):
     with open(path, "rb") as f:
         return pickle.load(f)
 
@@ -130,6 +162,7 @@ def setup_directories():
     try_mkdir("data")
     try_mkdir("data/chr")
     try_mkdir("data/chr/tables")
+    try_mkdir("data/chr/tables/usr")
     try_mkdir("data/chr/obj")
 
 def setup_tables():
@@ -176,9 +209,9 @@ def full_setup():
     setup_days()
 
 def init_already_installed():
-    global config_table, modmail_table, day_loop_obj, day_loop_num, m_index
-    config_table = load_table("data/config.table")
-    modmail_table = load_table("data/modmail.table")
+    global config_table, modmail_table, day_loop_obj, day_loop_num, m_index, chr_unapproved_list
+    config_table = load_obj("data/config.table")
+    modmail_table = load_obj("data/modmail.table")
     with open("data/dlnn.bin", "rb") as f:
         add_days(pickle.load(f))
     with open("data/mind.bin", "rb") as f:
@@ -188,7 +221,29 @@ def init_already_installed():
         ndln = datetime.datetime.now()
         diff = ndln - day_loop_obj
         add_days(diff.days)
+    if os.path.exists("data/chr/tables/unapproved.list"):
+        chr_unapproved_list = load_obj("data/chr/tables/unapproved.list")
 
+async def create_character_table_skeleton(user_id):
+    return ATHelperTable(f"data/chr/tables/usr/{user_id}.table", ["name", "chr_id", "approved"])
+
+async def get_users_character_table(user_id):
+    path = f"data/chr/tables/usr/{user_id}.table"
+    if not (os.path.exists(path)):
+        table = await create_character_table_skeleton(user_id)
+        table.commit()
+        return table
+    else:
+        return load_obj(path)
+
+async def get_character(user_id=None, name=None, chr_id=None):
+    if user_id != None:
+        table = await get_users_character_table(user_id)
+        if name != None:
+            char = table.get_entry("name", name)
+            return load_obj(f"data/chr/obj/{char['chr_id']}")
+    elif chr_id != None:
+        return load_obj(f"data/chr/obj/{chr_id}")
 
 @bot.command()
 async def set_once_monthly(ctx, ch_id):
@@ -244,20 +299,13 @@ async def set_at_guild_id(ctx):
         await ctx.send("error: you are not the devuser")
 
 @bot.command()
-async def ateval(ctx, expr):
-    if testing_mode:
-        await ctx.send(str(eval(expr)))
-    else:
-        pass
-
-@bot.command()
 async def help(ctx, page):
     emb = discord.Embed()
-    emb.title = f"Info: {page}"
+    emb.title = f"Help: {page}"
     try:
         emb.description = man_entries[page]
     except KeyError:
-        await ctx.send(f"Error: info page {page} not found")
+        await ctx.send(f"Error: help page {page} not found")
     emb.color = discord.Color.blue()
     await ctx.send(embed=emb)
 
@@ -301,6 +349,23 @@ async def modmail_close(ctx, num: int):
         await ctx.send("You must be a staff member to use this command.")
 
 @bot.command()
+async def submit(ctx, name, sheet):
+    user_id_str = str(ctx.author.id)
+    table = await get_users_character_table(user_id_str)
+    char = ATCharacter(name, sheet)
+    table.add_entry(name, char.id, "False")
+    await char.submit()
+    await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is ```{char.id}```.")
+
+#testing only commands
+@bot.command()
+async def ateval(ctx, expr):
+    if testing_mode:
+        await ctx.send(str(eval(expr)))
+    else:
+        pass
+
+@bot.command()
 async def testing_disable_mod_check(ctx):
     global mod_role
     if testing_mode:
@@ -313,6 +378,11 @@ async def testing_disable_mod_check(ctx):
 async def inc_day_c(ctx, amount: int):
     if testing_mode:
         await testing_inc_day(amount)
+
+@bot.command()
+async def get_char_dict(ctx, id):
+    if testing_mode:
+        await ctx.send(str((await get_character(chr_id=id)).__dict__))
 
 @tasks.loop(minutes=10)
 async def time_check_loop():
