@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.0-valentine"
+VERSION = "0.13.1-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -385,8 +385,8 @@ async def approve(ctx, which, chr_id):
 async def status(ctx):
     emb = discord.Embed()
     emb.title = "Bot Status"
-    emb.add_field("ATHelper version", VERSION)
-    emb.add_field("Bot is running in testing mode", str(testing_mode))
+    emb.add_field(name="ATHelper version", value=VERSION)
+    emb.add_field(name="Bot is running in testing mode", value=str(testing_mode))
     emb.color = discord.Color.magenta()
     await ctx.send(embed=emb)
 
