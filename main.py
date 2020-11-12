@@ -21,6 +21,8 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
+VERSION = "0.13.0-valentine"
+
 #Discord objects loaded from config table
 once_monthly_channel = None
 
@@ -108,7 +110,7 @@ class ATHelperTable:
             pickle.dump(self, f)
 
 class ATCharacter:
-    def __init__(self, name, sheet):
+    def __init__(self, name, sheet, owner_id):
         self.name = name
         self.sheet = sheet
         self.id = secrets.token_hex(10)
@@ -117,6 +119,8 @@ class ATCharacter:
         self.products_owned = []
         self.approved_bio = False
         self.approved_stats = False
+        self.owner_id = owner_id
+        self.approver_ids = []
 
     async def commit(self):
         with open(self.path, "wb") as f:
@@ -135,6 +139,8 @@ class ATCharacter:
             self.approved_stats = True
         if (self.approved_bio) and (self.approved_stats):
             chr_unnaproved_list.remove(self.id)
+        with open("data/chr/tables/unapproved.list", "wb") as f:
+            pickle.dump(chr_unapproved_list, f)
 
 def load_obj(path):
     with open(path, "rb") as f:
@@ -353,16 +359,36 @@ async def modmail_close(ctx, num: int):
 async def submit(ctx, name, sheet):
     user_id_str = str(ctx.author.id)
     table = await get_users_character_table(user_id_str)
-    char = ATCharacter(name, sheet)
+    char = ATCharacter(name, sheet, user_id_str)
     table.add_entry(name, char.id, "False")
     await char.submit()
     await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is ```{char.id}```.")
 
 @bot.command()
-async def approve_bio(ctx, chr_id):
+async def approve(ctx, which, chr_id):
     if mod_role in ctx.author.roles:
         char = await get_character(chr_id)
-        #TODO: Finish approval
+        if not (char.approved_bio and char.approved_stats):
+            owner_char_table = await get_users_character_table(char.owner_id)
+            approved_char_table_entry = owner_char_table.get_entry("chr_id", chr_id)
+            await char.approve(which)
+            char.approver_ids.append(ctx.author.id)
+            if char.approved_bio and char.approved_stats:
+                owner_char_table.edit_entry(approved_char_table_entry["id"], "approved", "True")
+            await ctx.send(f"OK! That character's {which} has been approved.")
+        else:
+            await ctx.send("That character has already been fully approved.")
+    else:
+        await ctx.send("You must be a staff member to use that command.")
+
+@bot.command()
+async def status(ctx):
+    emb = discord.Embed()
+    emb.title = "Bot Status"
+    emb.add_field("ATHelper version", VERSION)
+    emb.add_field("Bot is running in testing mode", str(testing_mode))
+    emb.color = discord.Color.magenta()
+    await ctx.send(embed=emb)
 
 #testing only commands
 @bot.command()
@@ -426,6 +452,7 @@ async def on_ready():
     mm_channel_category = bot.get_channel(int(get_config("modmail_category_id")))
     at_guild = bot.get_guild(int(get_config("at_guild_id")))
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
+    await bot.change_presence(activity=discord.Game(name="at.help athelper"))
     time_check_loop.start()
 
 async def testing_inc_day(amount):

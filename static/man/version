@@ -1,0 +1,10 @@
+ATHelper uses versioning numbers for me (the developer) to know what changes were made when.
+
+A version could like like:
+
+0.13.0-valentine
+or
+0.13.0-angela
+
+*valentine* t the end of the version number denotes that its a testing version or an incomplete version not meant to be used in production.
+*angela* at the end denotes that its a production version.
