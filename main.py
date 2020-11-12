@@ -9,6 +9,7 @@ import copy
 import sys
 import datetime
 import secrets
+import traceback
 
 bot = commands.Bot(command_prefix="at.")
 
@@ -357,6 +358,12 @@ async def submit(ctx, name, sheet):
     await char.submit()
     await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is ```{char.id}```.")
 
+@bot.command()
+async def approve_bio(ctx, chr_id):
+    if mod_role in ctx.author.roles:
+        char = await get_character(chr_id)
+        #TODO: Finish approval
+
 #testing only commands
 @bot.command()
 async def ateval(ctx, expr):
@@ -398,6 +405,18 @@ async def time_check_loop():
             inc_m_index()
         dump_days()
     now = new_now
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.UserInputError):
+        await ctx.send("Error: there was an error with the command. That command may not exist or an argument you gave may be invalid.")
+    elif hasattr(error, "original"):
+        error = error.original
+        emb = discord.Embed()
+        emb.title = "Fatal Error"
+        emb.color = discord.Color.red()
+        emb.description = f"A fatal error has occurred. Please report it to the developer:\n\n```{''.join(traceback.format_exception(type(error), error, error.__traceback__))}```"
+        await ctx.send(embed=emb)
 
 @bot.event
 async def on_ready():
