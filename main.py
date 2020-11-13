@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.1-valentine"
+VERSION = "0.13.2-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -367,7 +367,9 @@ async def submit(ctx, name, sheet):
 @bot.command()
 async def approve(ctx, which, chr_id):
     if mod_role in ctx.author.roles:
-        char = await get_character(chr_id)
+        char = await get_character(chr_id=chr_id)
+        if testing_mode:
+            await ctx.send(f"```Testing mode: at.approve: char is {char}```")
         if not (char.approved_bio and char.approved_stats):
             owner_char_table = await get_users_character_table(char.owner_id)
             approved_char_table_entry = owner_char_table.get_entry("chr_id", chr_id)
@@ -385,8 +387,8 @@ async def approve(ctx, which, chr_id):
 async def status(ctx):
     emb = discord.Embed()
     emb.title = "Bot Status"
-    emb.add_field(name="ATHelper version", value=VERSION)
-    emb.add_field(name="Bot is running in testing mode", value=str(testing_mode))
+    emb.add_field(name="ATHelper version", value=VERSION, inline=False)
+    emb.add_field(name="Bot is running in testing mode", value=str(testing_mode), inline=False)
     emb.color = discord.Color.magenta()
     await ctx.send(embed=emb)
 
