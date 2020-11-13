@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.6-valentine"
+VERSION = "0.14.0-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -385,6 +385,36 @@ async def approve(ctx, which, chr_id):
             await ctx.send("That character has already been fully approved.")
     else:
         await ctx.send("You must be a staff member to use that command.")
+
+@bot.command()
+async def list_characters(ctx, user: discord.User):
+    await ctx.send(f"Sending a list of {user}'s characters. Use at.character_info (id) to see more info about a specific character.")
+    str_user_id = str(user.id)
+    async with ctx.typing():
+        usr_table = await get_users_character_table(str_user_id)
+        for i in usr_table.entries:
+            emb = discord.Embed()
+            emb.title = "Character"
+            emb.add_field(name="Character Name", value=i.field_map["name"], inline=False)
+            emb.add_field(name="Is fully approved?", value=i.field_map["approved"], inline=False)
+            emb.add_field(name="Character's ID", value=i.field_map["chr_id"], inline=False)
+            await ctx.send(embed=emb)
+
+@bot.command()
+async def character_info(ctx, chr_id):
+    async with ctx.typing():
+        char = await get_character(chr_id=chr_id)
+        emb = discord.Embed()
+        emb.title = f"Character info: {char.name}"
+        emb.color = discord.Color.blurple()
+        emb.add_field(name="Character name", value=char.name, inline=False)
+        emb.add_field(name="Character ID", value=char.id, inline=False)
+        emb.add_field(name="Currency Amount", value=char.currency_amount, inline=False)
+        emb.add_field(name="Approved bio?", value=char.approved_bio, inline=False)
+        emb.add_field(name="Approved stats?", value=char.approved_stats, inline=False)
+        emb.add_field(name="Character's sheet", value=char.sheet, inline=False)
+        emb.add_field(name="Character's Owner", value=bot.get_user(int(char.owner_id)).mention, inline=False)
+        await ctx.send(embed=emb)
 
 @bot.command()
 async def status(ctx):
