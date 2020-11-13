@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.14.1-valentine"
+VERSION = "0.15.1-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -317,12 +317,12 @@ async def help(ctx, page):
     await ctx.send(embed=emb)
 
 @bot.command()
-async def modmail(ctx, category, subject):
+async def mm(ctx, category, subject):
     await send_modmail(subject, category, ctx.author)
     await ctx.send("Sent.")
 
 @bot.command()
-async def modmail_info(ctx, num: int):
+async def mmi(ctx, num: int):
     if mod_role in ctx.author.roles:
         try:
             mm_entry = modmail_table.get_raw_entry_from_id(num)
@@ -341,7 +341,7 @@ async def modmail_info(ctx, num: int):
         await ctx.send("Only staff members can use this command")
 
 @bot.command()
-async def modmail_close(ctx, num: int):
+async def mmc(ctx, num: int):
     if mod_role in ctx.author.roles:
         try:
             mm_entry = modmail_table.get_raw_entry_from_id(num)
@@ -363,7 +363,7 @@ async def submit(ctx, name, sheet):
     table.add_entry(name, char.id, "False")
     table.commit()
     await char.submit()
-    await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is ```{char.id}```.")
+    await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is: ```{char.id}```")
 
 @bot.command()
 async def approve(ctx, which, chr_id):
@@ -387,7 +387,7 @@ async def approve(ctx, which, chr_id):
         await ctx.send("You must be a staff member to use that command.")
 
 @bot.command()
-async def list_characters(ctx, user: discord.User):
+async def listc(ctx, user: discord.User):
     await ctx.send(f"Sending a list of {user}'s characters. Use at.character_info (id) to see more info about a specific character.")
     str_user_id = str(user.id)
     async with ctx.typing():
@@ -402,19 +402,29 @@ async def list_characters(ctx, user: discord.User):
     await ctx.send("Done.")
 
 @bot.command()
-async def character_info(ctx, chr_id):
+async def chari(ctx, chr_id):
     async with ctx.typing():
         emb = await get_char_info_embed(chr_id)
         await ctx.send(embed=emb)
 
 @bot.command()
-async def list_waiting_approval(ctx):
+async def listwa(ctx):
     await ctx.send("Please wait a moment while I retrieve the list; it may be long...")
     async with ctx.typing():
         await asyncio.sleep(2)
         for i in chr_unapproved_list:
             await ctx.send(embed=await get_char_info_embed(i))
     await ctx.send("Done.")
+
+@bot.command()
+async def charse(ctx, name):
+    async with ctx.typing():
+        try:
+            char = await get_character(user_id=str(ctx.author.id), name=name)
+        except KeyError:
+            await ctx.send("No character with that name was found.")
+        else:
+            await ctx.send(char.id)
 
 @bot.command()
 async def status(ctx):

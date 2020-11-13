@@ -1,6 +1,6 @@
 **Modmail commands**
 
-at.modmail <category> <subject> - Send a modmail. category is the category name and subject is the subject line.
+at.mm <category> <subject> - Send a modmail. category is the category name and subject is the subject line.
 
 available categories:
 
@@ -12,6 +12,6 @@ other
 
 Staff-only commands:
 
-at.modmail_close <id> - Close a modmail ticket by ID #.
+at.mmc <id> - Close a modmail ticket by ID #.
 
-at.modmail_info <id> - Get the info of a modmail ticket by ID #.
+at.mmi <id> - Get the info of a modmail ticket by ID #.
