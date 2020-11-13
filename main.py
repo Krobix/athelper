@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.14.0-valentine"
+VERSION = "0.14.1-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -399,22 +399,22 @@ async def list_characters(ctx, user: discord.User):
             emb.add_field(name="Is fully approved?", value=i.field_map["approved"], inline=False)
             emb.add_field(name="Character's ID", value=i.field_map["chr_id"], inline=False)
             await ctx.send(embed=emb)
+    await ctx.send("Done.")
 
 @bot.command()
 async def character_info(ctx, chr_id):
     async with ctx.typing():
-        char = await get_character(chr_id=chr_id)
-        emb = discord.Embed()
-        emb.title = f"Character info: {char.name}"
-        emb.color = discord.Color.blurple()
-        emb.add_field(name="Character name", value=char.name, inline=False)
-        emb.add_field(name="Character ID", value=char.id, inline=False)
-        emb.add_field(name="Currency Amount", value=char.currency_amount, inline=False)
-        emb.add_field(name="Approved bio?", value=char.approved_bio, inline=False)
-        emb.add_field(name="Approved stats?", value=char.approved_stats, inline=False)
-        emb.add_field(name="Character's sheet", value=char.sheet, inline=False)
-        emb.add_field(name="Character's Owner", value=bot.get_user(int(char.owner_id)).mention, inline=False)
+        emb = await get_char_info_embed(chr_id)
         await ctx.send(embed=emb)
+
+@bot.command()
+async def list_waiting_approval(ctx):
+    await ctx.send("Please wait a moment while I retrieve the list; it may be long...")
+    async with ctx.typing():
+        await asyncio.sleep(2)
+        for i in chr_unapproved_list:
+            await ctx.send(embed=await get_char_info_embed(i))
+    await ctx.send("Done.")
 
 @bot.command()
 async def status(ctx):
@@ -489,6 +489,20 @@ async def on_ready():
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
     await bot.change_presence(activity=discord.Game(name="at.help athelper"))
     time_check_loop.start()
+
+async def get_char_info_embed(chr_id):
+    char = await get_character(chr_id=chr_id)
+    emb = discord.Embed()
+    emb.title = f"Character info: {char.name}"
+    emb.color = discord.Color.blurple()
+    emb.add_field(name="Character name", value=char.name, inline=False)
+    emb.add_field(name="Character ID", value=char.id, inline=False)
+    emb.add_field(name="Currency Amount", value=char.currency_amount, inline=False)
+    emb.add_field(name="Approved bio?", value=char.approved_bio, inline=False)
+    emb.add_field(name="Approved stats?", value=char.approved_stats, inline=False)
+    emb.add_field(name="Character's sheet", value=char.sheet, inline=False)
+    emb.add_field(name="Character's Owner", value=bot.get_user(int(char.owner_id)).mention, inline=False)
+    return emb
 
 async def testing_inc_day(amount):
     global m_changed
