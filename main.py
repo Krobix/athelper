@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.5-valentine"
+VERSION = "0.13.6-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -138,7 +138,7 @@ class ATCharacter:
         elif which == "stats":
             self.approved_stats = True
         if (self.approved_bio) and (self.approved_stats):
-            chr_unnaproved_list.remove(self.id)
+            chr_unapproved_list.remove(self.id)
         with open("data/chr/tables/unapproved.list", "wb") as f:
             pickle.dump(chr_unapproved_list, f)
 
