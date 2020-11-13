@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.2-valentine"
+VERSION = "0.13.3-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -377,6 +377,7 @@ async def approve(ctx, which, chr_id):
             char.approver_ids.append(ctx.author.id)
             if char.approved_bio and char.approved_stats:
                 owner_char_table.edit_entry(approved_char_table_entry["id"], "approved", "True")
+                owner_char_table.commit()
             await ctx.send(f"OK! That character's {which} has been approved.")
         else:
             await ctx.send("That character has already been fully approved.")
