@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.13.3-valentine"
+VERSION = "0.13.4-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -361,6 +361,7 @@ async def submit(ctx, name, sheet):
     table = await get_users_character_table(user_id_str)
     char = ATCharacter(name, sheet, user_id_str)
     table.add_entry(name, char.id, "False")
+    table.commit()
     await char.submit()
     await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is ```{char.id}```.")
 
