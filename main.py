@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.15.1-valentine"
+VERSION = "0.16.0-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -33,6 +33,14 @@ mm_channel_category = None
 mod_role = None
 
 at_guild = None
+
+char_archive_channel = None
+
+log_channel = None
+
+greetings_channel = None
+
+loaded_testing_char = None
 #########################################
 
 m_channel_names = []
@@ -54,6 +62,8 @@ m_index = 0
 m_changed = False
 
 chr_unapproved_list = []
+
+users_garbage_collection = []
 
 class ATHelperTableEntry:
     def __init__(self, id, field_values, table):
@@ -109,22 +119,28 @@ class ATHelperTable:
         with open(self.path, "wb") as f:
             pickle.dump(self, f)
 
-class ATCharacter:
+
+class ATBaseObject:
+    def __init__(self):
+        self.path = "object"
+    
+    async def commit(self):
+        with open(self.path, "wb") as f:
+            pickle.dump(self, f)
+
+class ATCharacter(ATBaseObject):
     def __init__(self, name, sheet, owner_id):
+        super().__init__()
         self.name = name
         self.sheet = sheet
         self.id = secrets.token_hex(10)
         self.path = f"data/chr/obj/{self.id}"
         self.currency_amount = 0
-        self.products_owned = []
+        self.products_owned = {}
         self.approved_bio = False
         self.approved_stats = False
         self.owner_id = owner_id
         self.approver_ids = []
-
-    async def commit(self):
-        with open(self.path, "wb") as f:
-            pickle.dump(self, f)
 
     async def submit(self):
         chr_unapproved_list.append(self.id) 
@@ -139,8 +155,75 @@ class ATCharacter:
             self.approved_stats = True
         if (self.approved_bio) and (self.approved_stats):
             chr_unapproved_list.remove(self.id)
+            emb = await get_char_info_embed(self.id)
+            await char_archive_channel.send(embed=emb)
         with open("data/chr/tables/unapproved.list", "wb") as f:
             pickle.dump(chr_unapproved_list, f)
+
+    async def get_shop_item(self, item_id):
+        if item_id in self.products_owned:
+            self.products_owned[item_id] += 1
+        else:
+            self.products_owned[item_id] = 1
+        await self.commit()
+
+    async def spend_money(self, amount):
+        if amount > self.currency_amount:
+            return "ERRAMOUNT"
+        else:
+            self.currency_amount -= amount
+            await self.commit()
+            return None
+
+    async def buy(self, pricetag):
+        if await self.spend_money(pricetag.price) != "ERRAMOUNT":
+            await self.get_shop_item(pricetag.item_id)
+        else:
+            return "ERRAMOUNT"
+
+class ATShopItem(ATBaseObject):
+    def __init__(self, name, id, description):
+        super().__init__()
+        self.name = name
+        self.id = id
+        self.description = description
+        self.path = f"data/econ/item/{id}"
+
+class ATShopItemPricetag(ATBaseObject):
+    def __init__(self, item, price):
+        super().__init__()
+        self.item_id = item.id
+        self.price = price
+        self.path = f"data/econ/0ptag"
+
+class ATShop(ATBaseObject):
+    def __init__(self, name, id, description, channel_id):
+        super().__init__()
+        self.name = name
+        self.id = id
+        self.item_pricetags = []
+        self.description = description
+        self.channel_id = channel_id
+        self.path = f"data/econ/shop/{id}"
+
+    async def add_pricetag(self, item_id, price):
+        pricetag = ATShopItemPricetag(await get_item(item_id), price)
+        try:
+            old_pricetag = await self.get_pricetag_from_item_id(item_id)
+        except KeyError:
+            self.item_pricetags.append(pricetag)
+        else:
+            self.item_pricetags.remove(old_pricetag)
+            self.item_pricetags.append(pricetag)
+        await self.commit()
+
+    async def get_pricetag_from_item_id(self, item_id):
+        """NOTE: returned in format (item, pricetag)"""
+        for i in self.item_pricetags:
+            if item_id == i.item_id:
+                return await get_item(item_id), i
+        else:
+            raise KeyError("No valid item attached to give pricetag")
 
 def load_obj(path):
     with open(path, "rb") as f:
@@ -171,6 +254,9 @@ def setup_directories():
     try_mkdir("data/chr/tables")
     try_mkdir("data/chr/tables/usr")
     try_mkdir("data/chr/obj")
+    try_mkdir("data/econ")
+    try_mkdir("data/econ/item")
+    try_mkdir("data/econ/shop")
 
 def setup_tables():
     global config_table, modmail_table
@@ -182,6 +268,9 @@ def setup_tables():
     config_table.add_entry("modmail_category_id", "None")
     config_table.add_entry("mod_role", "None")
     config_table.add_entry("at_guild_id", "None")
+    config_table.add_entry("char_arch_id", "None")
+    config_table.add_entry("log_channel", "None")
+    config_table.add_entry("greetings_channel", "None")
     config_table.commit()
     #Modmail table
     modmail_table = ATHelperTable("data/modmail.table", ["opener_id", "subject", "category", "channel_id"])
@@ -252,6 +341,22 @@ async def get_character(user_id=None, name=None, chr_id=None):
     elif chr_id != None:
         return load_obj(f"data/chr/obj/{chr_id}")
 
+async def get_shop(id):
+    with open(f"data/econ/shop/{id}", "rb") as f:
+        return pickle.load(f)
+
+async def get_shop_by_channel(channel):
+    for i in os.listdir("data/econ/shop"):
+        shop = await get_shop(i)
+        if shop.channel_id == channel.id:
+            return shop
+    else:
+        raise KeyError("Shop not found")
+
+async def get_item(id):
+    with open(f"data/econ/item/{id}", "rb") as f:
+        return pickle.load(f)
+
 @bot.command()
 async def set_once_monthly(ctx, ch_id):
     if str(ctx.author.id) == get_config("devuser"):
@@ -301,6 +406,30 @@ async def set_moderator_role(ctx):
 async def set_at_guild_id(ctx):
     if str(ctx.author.id) == get_config("devuser"):
         set_config("at_guild_id", str(ctx.guild.id))
+        await ctx.send("OK")
+    else:
+        await ctx.send("error: you are not the devuser")
+
+@bot.command()
+async def set_char_archive_channel(ctx):
+    if str(ctx.author.id) == get_config("devuser"):
+        set_config("char_arch_id", str(ctx.channel.id))
+        await ctx.send("OK")
+    else:
+        await ctx.send("error: you are not the devuser")
+
+@bot.command()
+async def set_log_channel(ctx):
+    if str(ctx.author.id) == get_config("devuser"):
+        set_config("log_channel", str(ctx.channel.id))
+        await ctx.send("OK")
+    else:
+        await ctx.send("error: you are not the devuser")
+
+@bot.command()
+async def set_greetings_channel(ctx):
+    if str(ctx.author.id) == get_config("devuser"):
+        set_config("greetings_channel", str(ctx.channel.id))
         await ctx.send("OK")
     else:
         await ctx.send("error: you are not the devuser")
@@ -427,6 +556,115 @@ async def charse(ctx, name):
             await ctx.send(char.id)
 
 @bot.command()
+async def shop_create(ctx, name, id, description, channel: discord.TextChannel):
+    if mod_role in ctx.author.roles:
+        shop = ATShop(name=name, id=id, description=description, channel_id=channel.id)
+        await shop.commit()
+        await ctx.send("OK!")
+    else:
+        await ctx.send("That command is for moderators only")
+
+@bot.command()
+async def shop_item_create(ctx, name, id, description):
+    if mod_role in ctx.author.roles:
+        item = ATShopItem(name=name, id=id, description=description)
+        await item.commit()
+        await ctx.send("OK!")
+    else:
+        await ctx.send("That command is for moderators only")
+
+@bot.command()
+async def add_item_to_shop(ctx, shop_id, item_id, price: int):
+    if mod_role in ctx.author.roles:
+        shop = await get_shop(shop_id)
+        await shop.add_pricetag(item_id, price)
+        await ctx.send("OK")
+    else:
+        await ctx.send("Only staff can use that command.")
+
+@bot.command()
+async def shopi(ctx):
+    try:
+        shop = await get_shop_by_channel(ctx.channel)
+    except KeyError:
+        await ctx.send("There is no shop in this channel")
+    else:
+        emb = discord.Embed()
+        emb.title = f"Shop info: {shop.name}"
+        emb.add_field(name="Shop name", value=shop.name, inline=False)
+        emb.add_field(name="Shop ID", value=shop.id, inline=False)
+        emb.add_field(name="Description", value=shop.description, inline=False)
+        emb.add_field(name="Stock", value=len(shop.item_pricetags), inline=False)
+        emb.color = discord.Color.green()
+        await ctx.send(embed=emb)
+
+@bot.command()
+async def itemls(ctx):
+    try:
+        shop = await get_shop_by_channel(ctx.channel)
+    except KeyError:
+        await ctx.send("There is no shop in this channel")
+    else:
+        async with ctx.typing():
+            for i in shop.item_pricetags:
+                emb = await get_item_info_embed(i.item_id)
+                emb.add_field(name="Price", value=str(i.price), inline=False)
+                await ctx.send(embed=emb)
+        await ctx.send("Done!")
+
+@bot.command()
+async def ownedls(ctx, chr_id):
+    try:
+        char = await get_character(chr_id=chr_id)
+    except OSError:
+        await ctx.send("Error: that character does not exist.")
+    else:
+        await ctx.send("Please wait while I retrieve the list; it may be long...")
+        async with ctx.typing():
+            for i in char.products_owned.keys():
+                emb = await get_item_info_embed(i)
+                emb.add_field(name="Amount Owned", value=str(char.products_owned[i]), inline=False)
+                await ctx.send(embed=emb)
+        await ctx.send("Done!")
+
+@bot.command()
+async def buy(ctx, chr_id, item_id):
+    #TODO: make this get shop from current channel and fetch pricetag
+    try:
+        char = await get_character(chr_id=chr_id)
+    except OSError:
+        await ctx.send("Error: no character with the given ID was found.")
+    else:
+        if not (char.approved_bio and char.approved_stats and (int(char.owner_id) == ctx.author.id)):
+            await ctx.send("Error: that character is not fully approved or is not yours.")
+        else:
+            try:
+                shop = await get_shop_by_channel(ctx.channel)
+                item, pricetag = await shop.get_pricetag_from_item_id(item_id)
+                err = await char.buy(pricetag)
+            except OSError:
+                await ctx.send("The item that you have requested to buy is nonexistent.")
+            else:
+                if err == "ERRAMOUNT":
+                    await ctx.send(f"Error: that character does not have enough money to purchase 1 {item.name}")
+                else:
+                    await ctx.send("Success")
+
+@bot.command()
+async def bank_give(ctx, amount: int, chr_id):
+    if mod_role in ctx.author.roles:
+        async with ctx.typing():
+            char = await get_character(chr_id=chr_id)
+            if char == None:
+                await ctx.send("Error: that character does not exist")
+            else:
+                char.currency_amount += amount
+                await char.commit()
+                await ctx.send("OK!")
+    else:
+        await ctx.send("Error: you must be staff to use that command")
+
+@bot.command()
 async def status(ctx):
     emb = discord.Embed()
     emb.title = "Bot Status"
@@ -462,6 +700,13 @@ async def get_char_dict(ctx, id):
     if testing_mode:
         await ctx.send(str((await get_character(chr_id=id)).__dict__))
 
+@bot.command()
+async def load_testing_char(ctx, id):
+    global loaded_testing_char
+    if testing_mode:
+        loaded_testing_char = await get_character(chr_id=id)
+        await ctx.send("OK")
+
 @tasks.loop(minutes=10)
 async def time_check_loop():
     global now, m_changed
@@ -477,6 +722,19 @@ async def time_check_loop():
         dump_days()
     now = new_now
 
+@tasks.loop(hours=24)
+async def data_garbage_collection():
+    await bot_log("Now, garbage collection will begin. Any character data that has been scheduled for deletion will be deleted.")
+    for i in users_garbage_collection:
+        for j in get_users_character_table(i).entries:
+            await delete_character(j.field_map["chr_id"])
+    await bot_log("Garbage collection has finished.")
+
+@bot.event
+async def on_member_join(member):
+    emb = discord.Embed()
+    await greetings_channel.send("placeholder welcome message")
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.UserInputError):
@@ -491,14 +749,31 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_ready():
-    global once_monthly_channel, once_hourly_channel, mm_channel_category, mod_role, at_guild
+    global once_monthly_channel, once_hourly_channel, mm_channel_category, mod_role, at_guild, char_archive_channel, log_channel, greetings_channel
+    ###CHANNEL LOADING
     once_monthly_channel = bot.get_channel(int(get_config("once_monthly_channel")))
     once_hourly_channel = bot.get_channel(int(get_config("once_hourly_channel")))
     mm_channel_category = bot.get_channel(int(get_config("modmail_category_id")))
+    char_archive_channel = bot.get_channel(int(get_config("char_arch_id")))
+    log_channel = bot.get_channel(int(get_config("log_channel")))
+    greetings_channel = bot.get_channel(int(get_config("greetings_channel")))
+    ##################
     at_guild = bot.get_guild(int(get_config("at_guild_id")))
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
     await bot.change_presence(activity=discord.Game(name="at.help athelper"))
     time_check_loop.start()
+    await bot_log("The bot is now running.")
+    if testing_mode:
+        await bot_log("The bot is running in testing mode.")
+
+async def delete_character(chr_id):
+    char = await get_character(chr_id=chr_id)
+    table = await get_users_character_table(char.owner_id)
+    chr_entry_id = int(table.get_entry(field="chr_id", search_value=chr_id)["id"])
+    table.remove_entry(chr_entry_id)
+    os.remove(char.path)
+    if char in chr_unapproved_list:
+        chr_unapproved_list.remove(char)
 
 async def get_char_info_embed(chr_id):
     char = await get_character(chr_id=chr_id)
@@ -512,6 +787,15 @@ async def get_char_info_embed(chr_id):
     emb.add_field(name="Approved stats?", value=char.approved_stats, inline=False)
     emb.add_field(name="Character's sheet", value=char.sheet, inline=False)
     emb.add_field(name="Character's Owner", value=bot.get_user(int(char.owner_id)).mention, inline=False)
+    return emb
+
+async def get_item_info_embed(item_id):
+    item = await get_item(item_id)
+    emb = discord.Embed()
+    emb.title = f"Shop Item: {item.name}"
+    emb.add_field(name="Name", value=item.name, inline=False)
+    emb.add_field(name="ID", value=item.id, inline=False)
+    emb.add_field(name="Description", value=item.description, inline=False)
     return emb
 
 async def testing_inc_day(amount):
@@ -529,6 +813,12 @@ async def send_modmail(subject, category, user):
     await chan.set_permissions(user, read_messages=True, send_messages=True)
     modmail_table.add_entry(str(user.id), subject, category, str(chan.id))
     modmail_table.commit()
+
+async def bot_log(message):
+    emb = discord.Embed()
+    emb.title = f"Log: {datetime.datetime.now()}"
+    emb.description = message
+    await log_channel.send(embed=emb)
 
 def main():
     global testing_mode, man_entries

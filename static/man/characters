@@ -1,31 +1,43 @@
-**Character commands**
+Character commands
+
 
 at.submit <name> <sheet>
 
-the submit command allows you to submit a character. name should be the name given to the character and sheet should be a google docs link.
 
-**DO NOT** just paste in a raw text sheet into the command.
+This command allows you to submit a character. "Name" should be the name given to the character and "Sheet" should be the google docs link that contains their information and stats. 
+
+DO NOT just paste in a raw text sheet into the command.
 
 After you submit, the bot will give you your character's unique ID. This is important.
 
-at.approve <which> <character id> 
+
+at.approve <which> <character ID>
+
 
 Allows a staff member to approve either a character's stats or bio. which should be either "bio" or "stats", and character id should be the character's unique ID.
 
-Both a bio and stats approval are needed to fully approve a character.
+Both your bio and stats need to be approved for your character to be considered roleplay ready.
+
 
 at.listc <user>
 
-lists any given members (usually via mentioning them) characters.
+
+Lists any given member's characters, usually by mentioning them.
+
 
 at.chari <id>
 
-gets a character's info via their unique ID.
+
+Gets a character's info via their unique ID.
+
 
 at.listwa
 
+
 Lists the characters awaiting approval.
+
 
 at.charse <name>
 
-searches for one of *your* characters by name.
+
+Searches for one of your characters by name.

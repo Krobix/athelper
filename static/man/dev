@@ -1,9 +1,0 @@
-**Developer commands**
-
-*These commands are only available to use by the developer.*
-
-at.setdev - sets yourself as the developer user
-
-at.set_once_monthly - Sets the current "monthly changed" channel by id
-
-at.set_once_hourly - same as at.set_once_monthly, except for the hourly channel
