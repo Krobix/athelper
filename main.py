@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.0-valentine"
+VERSION = "0.16.1-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -663,6 +663,30 @@ async def bank_give(ctx, amount: int, chr_id):
                 await ctx.send("OK!")
     else:
         await ctx.send("Error: you must be staff to use that command")
+
+@bot.command()
+async def givem(ctx, amount: int, chr_id1, chr_id2):
+    try:
+        char1 = await get_character(chr_id=chr_id1)
+    except OSError:
+        await ctx.send("A character was not found with the first ID given.")
+    else:
+        if int(char1.owner_id) == ctx.author.id:
+            try:
+                char2 = await get_character(chr_id=chr_id2)
+            except OSError:
+                await ctx.send("A character was not found with the second ID given.")
+            else:
+                err = await char1.spend_money(amount)
+                if err == "ERRAMOUNT":
+                    await ctx.send("That character does not have enough money to give that amount!")
+                else:
+                    char2.currency_amount += amount
+                    await char1.commit()
+                    await char2.commit()
+                    await ctx.send("OK")
+        else:
+            await ctx.send("Error: that character is not yours!")
 
 @bot.command()
 async def status(ctx):
