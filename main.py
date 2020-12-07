@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.1-valentine"
+VERSION = "0.16.2-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -178,6 +178,7 @@ class ATCharacter(ATBaseObject):
     async def buy(self, pricetag):
         if await self.spend_money(pricetag.price) != "ERRAMOUNT":
             await self.get_shop_item(pricetag.item_id)
+            pricetag.shop -= 1
         else:
             return "ERRAMOUNT"
 
@@ -190,10 +191,11 @@ class ATShopItem(ATBaseObject):
         self.path = f"data/econ/item/{id}"
 
 class ATShopItemPricetag(ATBaseObject):
-    def __init__(self, item, price):
+    def __init__(self, item, price, stock):
         super().__init__()
         self.item_id = item.id
         self.price = price
+        self.stock = stock
         self.path = f"data/econ/0ptag"
 
 class ATShop(ATBaseObject):
@@ -206,8 +208,8 @@ class ATShop(ATBaseObject):
         self.channel_id = channel_id
         self.path = f"data/econ/shop/{id}"
 
-    async def add_pricetag(self, item_id, price):
-        pricetag = ATShopItemPricetag(await get_item(item_id), price)
+    async def add_pricetag(self, item_id, price, stock):
+        pricetag = ATShopItemPricetag(await get_item(item_id), price, stock)
         try:
             old_pricetag = await self.get_pricetag_from_item_id(item_id)
         except KeyError:
@@ -574,10 +576,10 @@ async def shop_item_create(ctx, name, id, description):
         await ctx.send("That command is for moderators only")
 
 @bot.command()
-async def add_item_to_shop(ctx, shop_id, item_id, price: int):
+async def add_item_to_shop(ctx, shop_id, item_id, price: int, stock: int):
     if mod_role in ctx.author.roles:
         shop = await get_shop(shop_id)
-        await shop.add_pricetag(item_id, price)
+        await shop.add_pricetag(item_id, price, stock)
         await ctx.send("OK")
     else:
         await ctx.send("Only staff can use that command.")
@@ -609,6 +611,7 @@ async def itemls(ctx):
             for i in shop.item_pricetags:
                 emb = await get_item_info_embed(i.item_id)
                 emb.add_field(name="Price", value=str(i.price), inline=False)
+                emb.add_field(name="Stock", value=str(i.stock), inline=False)
                 await ctx.send(embed=emb)
         await ctx.send("Done!")
 
@@ -648,6 +651,9 @@ async def buy(ctx, chr_id, item_id):
                 if err == "ERRAMOUNT":
                     await ctx.send(f"Error: that character does not have enough money to purchase 1 {item.name}")
                 else:
+                    if pricetag.stock <= 0:
+                        shop.item_pricetags.remove(item.id)
+                    await shop.commit()
                     await ctx.send("Success")
 
 @bot.command()
