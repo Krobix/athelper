@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.2-valentine"
+VERSION = "0.16.3-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -64,6 +64,9 @@ m_changed = False
 chr_unapproved_list = []
 
 users_garbage_collection = []
+
+class CharacterNotFoundError(OSError):
+    pass
 
 class ATHelperTableEntry:
     def __init__(self, id, field_values, table):
@@ -338,10 +341,16 @@ async def get_character(user_id=None, name=None, chr_id=None):
     if user_id != None:
         table = await get_users_character_table(user_id)
         if name != None:
-            char = table.get_entry("name", name)
-            return load_obj(f"data/chr/obj/{char['chr_id']}")
+            try:
+                har = table.get_entry("name", name)
+                return load_obj(f"data/chr/obj/{char['chr_id']}")
+            except OSError:
+                raise CharacterNotFoundError
     elif chr_id != None:
-        return load_obj(f"data/chr/obj/{chr_id}")
+        try:
+            return load_obj(f"data/chr/obj/{chr_id}")
+        except OSError:
+            raise CharacterNotFoundError 
 
 async def get_shop(id):
     with open(f"data/econ/shop/{id}", "rb") as f:
@@ -766,10 +775,19 @@ async def on_member_join(member):
     await greetings_channel.send("placeholder welcome message")
 
 @bot.event
+async def on_member_remove(member):
+    await bot_log(f"The member with the ID {member.id} has left. If they have any characters, they will be scheduled for deletion.")
+    if os.path.exists(f"data/chr/tables/usr/{member.id}.table"):
+        await bot_log(f"Character list for {member.id} found...")
+        users_garbage_collection.append(member.id)
+
+@bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.UserInputError):
         await ctx.send("Error: there was an error with the command. That command may not exist or an argument you gave may be invalid.")
     elif hasattr(error, "original"):
+        if isinstance(error.original, CharacterNotFoundError):
+            await ctx.send("Error: that character was not found.")
         error = error.original
         emb = discord.Embed()
         emb.title = "Fatal Error"
