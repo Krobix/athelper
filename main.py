@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.3-valentine"
+VERSION = "0.16.4-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -342,7 +342,7 @@ async def get_character(user_id=None, name=None, chr_id=None):
         table = await get_users_character_table(user_id)
         if name != None:
             try:
-                har = table.get_entry("name", name)
+                char = table.get_entry("name", name)
                 return load_obj(f"data/chr/obj/{char['chr_id']}")
             except OSError:
                 raise CharacterNotFoundError
