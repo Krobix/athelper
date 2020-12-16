@@ -1,0 +1,28 @@
+**Economy-based commands**
+
+> at.shop_create <name> <id> <description> <channel>
+Staff only. The only requirement is that ID is a single-word name.
+
+> at.shop_item_create <name> <id> <description>
+Staff only. just like shop_create, but for items.
+
+> at.add_item_to_shop <shop_id> <item_id> <price> <stock>
+Staff only. Adds item <item_id> to shop <shop_id> with amount <stock> and price of <price>.
+
+> at.shopi
+Get info about the shop you're currently in.
+
+> at.itemls
+Lists items belonging to the shop that you're currently in.
+
+> at.ownedls <character_id>
+Lists items that the character with ID <character_id> currently owns.
+
+> at.buy <character_id> <item_id>
+Makes the character with id <character_id> buy 1 of the item with id <item_id> from the shop channel that you are currently in.
+
+> at.bank_give <amount> <character_id>
+Staff only. Give character <character_id> any amount of money, specified with <amount>.
+
+> at.givem <amount> <character_id_1> <character_id_2>
+Take <amount> amount of money from one of your characters <character_id_1> and give it to the character <character_id_2>.

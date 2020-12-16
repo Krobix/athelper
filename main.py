@@ -21,7 +21,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.5-valentine"
+VERSION = "0.16.6-valentine"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
