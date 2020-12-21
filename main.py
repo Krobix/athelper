@@ -11,7 +11,10 @@ import datetime
 import secrets
 import traceback
 
-bot = commands.Bot(command_prefix="at.")
+intents = discord.Intents.default()
+intents.members = True
+
+bot = commands.Bot(command_prefix="at.", intents=intents)
 
 bot.remove_command("help")
 
@@ -21,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.6-valentine"
+VERSION = "0.16.7-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -250,7 +253,7 @@ def add_days(amount):
 def inc_m_index():
     global m_index
     m_index += 1
-    if m_index > 10:
+    if m_index > 19:
         m_index = 0
 
 def setup_directories():
@@ -748,18 +751,24 @@ async def load_testing_char(ctx, id):
 
 @tasks.loop(minutes=10)
 async def time_check_loop():
-    global now, m_changed
+    global now, m_changed, day_loop_obj
+    await bot_log("Checking time and date.")
     new_now = datetime.datetime.now()
     if new_now.hour != now.hour:
         await once_hourly_channel.edit(name=h_channel_names[new_now.hour])
-    if new_now.day != day_loop_obj.day:
+    await bot_log(f"The current day is {new_now.day} and the stored day is {day_loop_num}")
+    while new_now.date() > day_loop_obj.date():
+        await bot_log("The day has changed.")
         add_days(1)
         if m_changed:
-            m_changed = False
-            await once_monthly_channel.edit(name=f"{day_loop_num} {m_channel_names[m_index]}")
             inc_m_index()
-        dump_days()
+            m_changed = False
+        day_loop_obj = day_loop_obj.replace(day=day_loop_obj.day+1)
+    await once_monthly_channel.edit(name=f"{day_loop_num} {m_channel_names[m_index]}")
+    dump_days()
     now = new_now
+    day_loop_obj = now
+    await bot_log("Check completed.")
 
 @tasks.loop(hours=24)
 async def data_garbage_collection():

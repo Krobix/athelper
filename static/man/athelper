@@ -3,8 +3,7 @@
 List of help articles to get you started (you can use at.help article_name to view one):
 
 ```
-dev - Developer Commands
 modmail - Modmail-related commands
-version - ATHelper version info
 characters - Character-related commands
+economy - IRP economy commands (staff commands and user commands)
 ```
