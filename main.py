@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.16.7-angela"
+VERSION = "0.17.0-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -55,6 +55,8 @@ mm_category_list = []
 now = datetime.datetime.now()
 
 man_entries = {}
+
+welcome_msg_raw = None
 
 day_loop_obj = None
 
@@ -313,7 +315,7 @@ def full_setup():
     setup_days()
 
 def init_already_installed():
-    global config_table, modmail_table, day_loop_obj, day_loop_num, m_index, chr_unapproved_list
+    global config_table, modmail_table, day_loop_obj, day_loop_num, m_index, chr_unapproved_list, welcome_msg_raw
     config_table = load_obj("data/config.table")
     modmail_table = load_obj("data/modmail.table")
     with open("data/dlnn.bin", "rb") as f:
@@ -325,6 +327,8 @@ def init_already_installed():
         ndln = datetime.datetime.now()
         diff = ndln - day_loop_obj
         add_days(diff.days)
+    with open("./static/on_join_msg", "r") as f:
+        welcome_msg_raw = f.read()
     if os.path.exists("data/chr/tables/unapproved.list"):
         chr_unapproved_list = load_obj("data/chr/tables/unapproved.list")
 
@@ -449,7 +453,11 @@ async def set_greetings_channel(ctx):
         await ctx.send("error: you are not the devuser")
 
 @bot.command()
-async def help(ctx, page):
+async def help(ctx, *args):
+    if len(args) >= 1:
+        page = args[0]
+    else:
+        page = "athelper"
     emb = discord.Embed()
     emb.title = f"Help: {page}"
     try:
@@ -499,14 +507,19 @@ async def mmc(ctx, num: int):
         await ctx.send("You must be a staff member to use this command.")
 
 @bot.command()
-async def submit(ctx, name, sheet):
-    user_id_str = str(ctx.author.id)
-    table = await get_users_character_table(user_id_str)
-    char = ATCharacter(name, sheet, user_id_str)
-    table.add_entry(name, char.id, "False")
-    table.commit()
-    await char.submit()
-    await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is: ```{char.id}```")
+async def submit(ctx, *args):
+    if len(args) != 2:
+        await ctx.send("Error: you did not give the proper amount of arguments. Note that, if the character's name is more than one word, you must put it in quotes.")
+    else:
+        name = args[0]
+        sheet = args[1]
+        user_id_str = str(ctx.author.id)
+        table = await get_users_character_table(user_id_str)
+        char = ATCharacter(name, sheet, user_id_str)
+        table.add_entry(name, char.id, "False")
+        table.commit()
+        await char.submit()
+        await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is: ```{char.id}```")
 
 @bot.command()
 async def approve(ctx, which, chr_id):
@@ -763,7 +776,7 @@ async def time_check_loop():
         if m_changed:
             inc_m_index()
             m_changed = False
-        day_loop_obj = day_loop_obj.replace(day=day_loop_obj.day+1)
+        day_loop_obj += datetime.timedelta(days=1)
     await once_monthly_channel.edit(name=f"{day_loop_num} {m_channel_names[m_index]}")
     dump_days()
     now = new_now
@@ -781,7 +794,10 @@ async def data_garbage_collection():
 @bot.event
 async def on_member_join(member):
     emb = discord.Embed()
-    await greetings_channel.send("placeholder welcome message")
+    emb.title = "Welcome!"
+    emb.description = welcome_msg_raw.format(member.mention)
+    emb.color = discord.Color.dark_red()
+    await greetings_channel.send(embed=emb)
 
 @bot.event
 async def on_member_remove(member):
@@ -793,7 +809,7 @@ async def on_member_remove(member):
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.UserInputError):
-        await ctx.send("Error: there was an error with the command. That command may not exist or an argument you gave may be invalid.")
+        await ctx.send("Error: there was an error with the command. That command may not exist or an argument you gave may be invalid. For more info, see at.help error.")
     elif hasattr(error, "original"):
         if isinstance(error.original, CharacterNotFoundError):
             await ctx.send("Error: that character was not found.")

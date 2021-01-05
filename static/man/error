@@ -1,0 +1,6 @@
+If you get an error that looks like this:
+
+```Error: there was an error with the command. That command may not exist or an argument you gave may be invalid.```
+
+Then you most likely input the command wrong. You should consult the help page. Some common problems are syntax errors, especially forgetting quotes. Make sure that, if 
+an argument you gave to a command gave multiple words, that you put them in quotes.
