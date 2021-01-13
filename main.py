@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.17.0-angela"
+VERSION = "0.18.0-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -162,9 +162,11 @@ class ATCharacter(ATBaseObject):
         elif which == "stats":
             self.approved_stats = True
         if (self.approved_bio) and (self.approved_stats):
+            user = bot.get_user(int(self.owner_id))
             chr_unapproved_list.remove(self.id)
             emb = await get_char_info_embed(self.id)
             await char_archive_channel.send(embed=emb)
+            await user.send(f"Your character {self.name} (ID: {self.id}) has beeen approved.")
         with open("data/chr/tables/unapproved.list", "wb") as f:
             pickle.dump(chr_unapproved_list, f)
 
@@ -452,6 +454,15 @@ async def set_greetings_channel(ctx):
     else:
         await ctx.send("error: you are not the devuser")
 
+
+@bot.command()
+async def set_welcome_msg(ctx, msg_id: int):
+    msg = await ctx.fetch_message(msg_id)
+    if str(ctx.author.id) == get_config("devuser"):
+        with open("static/on_join_msg", "w") as f:
+            f.write(msg.content)
+            await ctx.send("OK")
+
 @bot.command()
 async def help(ctx, *args):
     if len(args) >= 1:
@@ -581,6 +592,25 @@ async def charse(ctx, name):
             await ctx.send("No character with that name was found.")
         else:
             await ctx.send(char.id)
+
+@bot.command()
+async def chardel(ctx, chr_id):
+    char = await get_character(chr_id=chr_id)
+    if (int(char.owner_id) == ctx.author.id) or (mod_role in ctx.author.roles):
+        await delete_character(chr_id)
+        await ctx.send("OK")
+    else:
+        await ctx.send("You do not have the vaid permissions to delete that character.")
+
+@bot.command()
+async def charrename(ctx, chr_id, new_name):
+    char = await get_character(chr_id=chr_id)
+    if int(char.owner_id) == ctx.author.id:
+        char.name = new_name 
+        await char.commit()
+        await ctx.send("OK")
+    else:
+        await ctx.send("You do not own that character.")
 
 @bot.command()
 async def shop_create(ctx, name, id, description, channel: discord.TextChannel):
@@ -835,6 +865,7 @@ async def on_ready():
     mod_role = utils.get(at_guild.roles, id=int(get_config("mod_role")))
     await bot.change_presence(activity=discord.Game(name="at.help athelper"))
     time_check_loop.start()
+    data_garbage_collection.start()
     await bot_log("The bot is now running.")
     if testing_mode:
         await bot_log("The bot is running in testing mode.")
