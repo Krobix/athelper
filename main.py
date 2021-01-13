@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.18.0-angela"
+VERSION = "0.18.1-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None

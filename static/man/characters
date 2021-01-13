@@ -41,3 +41,15 @@ at.charse <name>
 
 
 Searches for one of your characters by name.
+
+
+at.chardel <id>
+
+
+Deletes the character with the given ID.
+
+
+at.charrename <id> <new_name>
+
+
+Renames character with ID <id> to the name <new_name>.
