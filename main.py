@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.0-angela"
+VERSION = "1.0.1-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -887,7 +887,7 @@ async def security_check(message):
             await bot_log(f"The watched user {message.author.mention} has used the command '{message.content}'")
         else:
             comm_name = message.content.split(" ")[0]
-            if (comm_name in ADMIN_COMMANDS) and ((str(message.author.id) != get_config("devuser")) or (not (mod_role in message.author.roles))):
+            if (comm_name in ADMIN_COMMANDS) and ((str(message.author.id) != get_config("devuser")) and (not (mod_role in message.author.roles))):
                 warnmsg = f"Warning: The user {message.author.mention} has tried to use the command '{message.content}', but they do not have the proper permissions. All of the commands they use until the bot restarts will be logged,"
                 devuser = bot.get_user(int(get_config("devuser")))
                 await devuser.send(warnmsg)
