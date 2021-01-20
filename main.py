@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "0.18.1-angela"
+VERSION = "1.0.0-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -52,6 +52,8 @@ h_channel_names = []
 
 mm_category_list = []
 
+watching_users = []
+
 now = datetime.datetime.now()
 
 man_entries = {}
@@ -69,6 +71,8 @@ m_changed = False
 chr_unapproved_list = []
 
 users_garbage_collection = []
+
+ADMIN_COMMANDS = ("at.approve", "at.ateval", "at.testing_disable_mod_check")
 
 class CharacterNotFoundError(OSError):
     pass
@@ -531,6 +535,8 @@ async def submit(ctx, *args):
         table.commit()
         await char.submit()
         await ctx.send(f"OK, {ctx.author.mention}, your character has been submitted. You will be notified when it has been accepted. Its unique ID is: ```{char.id}```")
+        if len(chr_unapproved_list) > 5:
+            await ctx.send(f"{mod_role.mention}, there are more than five characters waiting for approval!")
 
 @bot.command()
 async def approve(ctx, which, chr_id):
@@ -817,7 +823,7 @@ async def time_check_loop():
 async def data_garbage_collection():
     await bot_log("Now, garbage collection will begin. Any character data that has been scheduled for deletion will be deleted.")
     for i in users_garbage_collection:
-        for j in get_users_character_table(i).entries:
+        for j in (await get_users_character_table(i).entries):
             await delete_character(j.field_map["chr_id"])
     await bot_log("Garbage collection has finished.")
 
@@ -869,6 +875,24 @@ async def on_ready():
     await bot_log("The bot is now running.")
     if testing_mode:
         await bot_log("The bot is running in testing mode.")
+
+@bot.event
+async def on_message(message):
+    await security_check(message)
+    await bot.process_commands(message)
+
+async def security_check(message):
+    if message.content.startswith("at."):
+        if message.author.id in watching_users:
+            await bot_log(f"The watched user {message.author.mention} has used the command '{message.content}'")
+        else:
+            comm_name = message.content.split(" ")[0]
+            if (comm_name in ADMIN_COMMANDS) and ((str(message.author.id) != get_config("devuser")) or (not (mod_role in message.author.roles))):
+                warnmsg = f"Warning: The user {message.author.mention} has tried to use the command '{message.content}', but they do not have the proper permissions. All of the commands they use until the bot restarts will be logged,"
+                devuser = bot.get_user(int(get_config("devuser")))
+                await devuser.send(warnmsg)
+                await bot_log(warnmsg)
+                watching_users.append(message.author.id)
 
 async def delete_character(chr_id):
     char = await get_character(chr_id=chr_id)
