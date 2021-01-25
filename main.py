@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.3-angela"
+VERSION = "1.0.4-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -906,7 +906,7 @@ async def delete_character(chr_id):
 
 async def fix_waiting_approval_list():
     for i in os.listdir("data/chr/obj"):
-        char = get_character(chr_id=i)
+        char = await get_character(chr_id=i)
         if (not (char.approved_bio and char.approved_stats)) and (not(char.id in chr_unapproved_list)):
             await bot_log("The unapproved character list has been detected as corrupt; This issue will be fixed automatically.")
             chr_unapproved_list.append(char.id)
