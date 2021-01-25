@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.2-angela"
+VERSION = "1.0.3-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -873,6 +873,7 @@ async def on_ready():
     time_check_loop.start()
     data_garbage_collection.start()
     await bot_log("The bot is now running.")
+    await fix_waiting_approval_list()
     if testing_mode:
         await bot_log("The bot is running in testing mode.")
 
@@ -902,6 +903,15 @@ async def delete_character(chr_id):
     os.remove(char.path)
     if char.id in chr_unapproved_list:
         chr_unapproved_list.remove(char.id)
+
+async def fix_waiting_approval_list():
+    for i in os.listdir("data/chr/obj"):
+        char = get_character(chr_id=i)
+        if (not (char.approved_bio and char.approved_stats)) and (not(char.id in chr_unapproved_list)):
+            await bot_log("The unapproved character list has been detected as corrupt; This issue will be fixed automatically.")
+            chr_unapproved_list.append(char.id)
+    with open("data/chr/tables/unapproved.list", "wb") as f:
+        pickle.dump(chr_unapproved_list, f)
 
 async def get_char_info_embed(chr_id):
     char = await get_character(chr_id=chr_id)
