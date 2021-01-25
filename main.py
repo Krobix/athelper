@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.1-angela"
+VERSION = "1.0.2-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -900,8 +900,8 @@ async def delete_character(chr_id):
     chr_entry_id = int(table.get_entry(field="chr_id", search_value=chr_id)["id"])
     table.remove_entry(chr_entry_id)
     os.remove(char.path)
-    if char in chr_unapproved_list:
-        chr_unapproved_list.remove(char)
+    if char.id in chr_unapproved_list:
+        chr_unapproved_list.remove(char.id)
 
 async def get_char_info_embed(chr_id):
     char = await get_character(chr_id=chr_id)
