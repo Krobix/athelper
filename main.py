@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.4-angela"
+VERSION = "1.0.5-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -829,11 +829,8 @@ async def data_garbage_collection():
 
 @bot.event
 async def on_member_join(member):
-    emb = discord.Embed()
-    emb.title = "Welcome!"
-    emb.description = welcome_msg_raw.format(member.mention)
-    emb.color = discord.Color.dark_red()
-    await greetings_channel.send(embed=emb)
+    welcome_msg = welcome_msg_raw.format(member.mention)
+    await greetings_channel.send(welcome_msg)
 
 @bot.event
 async def on_member_remove(member):
