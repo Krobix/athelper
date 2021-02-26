@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.6-angela"
+VERSION = "1.0.7-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -463,7 +463,7 @@ async def set_greetings_channel(ctx):
 async def set_welcome_msg(ctx, msg_id: int):
     msg = await ctx.fetch_message(msg_id)
     if (str(ctx.author.id) == get_config("devuser")) or (mod_role in ctx.author.roles):
-        with open("static/on_join_msg", "w") as f:
+        with open("data/welcome_override", "w") as f:
             f.write(msg.content)
             await ctx.send("OK")
 
@@ -828,7 +828,7 @@ async def data_garbage_collection():
     await bot_log("Garbage collection has finished.")
 
 @bot.event
-async def on_member_join(member):
+async def on_member_join(member): 
     welcome_msg = welcome_msg_raw.format(member.mention)
     await greetings_channel.send(welcome_msg)
 
@@ -855,7 +855,7 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_ready():
-    global once_monthly_channel, once_hourly_channel, mm_channel_category, mod_role, at_guild, char_archive_channel, log_channel, greetings_channel
+    global once_monthly_channel, once_hourly_channel, mm_channel_category, mod_role, at_guild, char_archive_channel, log_channel, greetings_channel, welcome_msg_raw
     ###CHANNEL LOADING
     once_monthly_channel = bot.get_channel(int(get_config("once_monthly_channel")))
     once_hourly_channel = bot.get_channel(int(get_config("once_hourly_channel")))
@@ -871,6 +871,9 @@ async def on_ready():
     data_garbage_collection.start()
     await bot_log("The bot is now running.")
     await fix_waiting_approval_list()
+    if os.path.exists("data/welcome_override"):
+        with open("data/welcome_override", "r") as f:
+            welcome_msg_raw =  f.read()
     if testing_mode:
         await bot_log("The bot is running in testing mode.")
 
