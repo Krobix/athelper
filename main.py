@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.7-angela"
+VERSION = "1.0.8-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -462,10 +462,13 @@ async def set_greetings_channel(ctx):
 @bot.command()
 async def set_welcome_msg(ctx, msg_id: int):
     msg = await ctx.fetch_message(msg_id)
+    await bot_log("Set welcome message command detected")
     if (str(ctx.author.id) == get_config("devuser")) or (mod_role in ctx.author.roles):
         with open("data/welcome_override", "w") as f:
             f.write(msg.content)
             await ctx.send("OK")
+    else:
+        await bot_log("Setting welcome message override failed")
 
 @bot.command()
 async def help(ctx, *args):
