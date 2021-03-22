@@ -24,7 +24,7 @@ modmail_table = None #data/modmail.table
 
 testing_mode = False
 
-VERSION = "1.0.8-angela"
+VERSION = "1.0.9-angela"
 
 #Discord objects loaded from config table
 once_monthly_channel = None
@@ -170,7 +170,10 @@ class ATCharacter(ATBaseObject):
             chr_unapproved_list.remove(self.id)
             emb = await get_char_info_embed(self.id)
             await char_archive_channel.send(embed=emb)
-            await user.send(f"Your character {self.name} (ID: {self.id}) has beeen approved.")
+            try:
+                await user.send(f"Your character {self.name} (ID: {self.id}) has beeen approved.")
+            except:
+                pass
         with open("data/chr/tables/unapproved.list", "wb") as f:
             pickle.dump(chr_unapproved_list, f)
 
@@ -832,6 +835,9 @@ async def data_garbage_collection():
 
 @bot.event
 async def on_member_join(member): 
+    if os.path.exists("data/welcome_override"):
+        with open("data/welcome_override", "r") as f:
+            welcome_msg_raw =  f.read()
     welcome_msg = welcome_msg_raw.format(member.mention)
     await greetings_channel.send(welcome_msg)
 
